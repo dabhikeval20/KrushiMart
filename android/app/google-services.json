@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "114448980691",
+    "project_id": "krushimart-efba6",
+    "storage_bucket": "krushimart-efba6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:114448980691:android:21ef61ecee197d9a5e1226",
+        "android_client_info": {
+          "package_name": "com.krushimart.krushimart"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCaymr1-2f9ppy5DwPoZ2jK7udZVnNNWog"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
