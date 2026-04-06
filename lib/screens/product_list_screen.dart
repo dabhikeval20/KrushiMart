@@ -14,6 +14,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedCategory = 'all';
+  bool _initialized = false;
 
   final List<String> _categories = [
     'all',
@@ -33,6 +34,21 @@ class _ProductListScreenState extends State<ProductListScreen> {
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map<String, dynamic> && args['category'] is String) {
+        final category = args['category'] as String;
+        if (_categories.contains(category)) {
+          _selectedCategory = category;
+        }
+      }
+      _initialized = true;
+    }
   }
 
   @override

@@ -4,6 +4,10 @@ import '../providers/auth_provider.dart';
 import '../providers/product_provider.dart';
 import '../models/user.dart';
 import '../models/product.dart';
+import '../services/notification_service.dart';
+import 'add_product_screen.dart';
+import 'api_categories_screen.dart';
+import 'profile_screen.dart';
 
 class SellerDashboardScreen extends StatefulWidget {
   const SellerDashboardScreen({super.key});
@@ -22,14 +26,15 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
 
     final List<Widget> _screens = [
       _buildDashboardContent(authProvider.currentUser!, productProvider),
-      Container(), // Placeholder for product list navigation
-      Container(), // Placeholder for add product navigation
-      Container(), // Placeholder for profile navigation
+      _buildMyProductsList(authProvider.currentUser!, productProvider),
+      const AddProductScreen(),
+      _buildProfileScreen(authProvider.currentUser!),
     ];
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Seller Dashboard'),
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -37,41 +42,108 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
           ),
         ],
       ),
+      drawer: _buildNavigationDrawer(context),
       body: IndexedStack(index: _selectedIndex, children: _screens),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() => _selectedIndex = index);
-          switch (index) {
-            case 0:
-              // Already on dashboard
-              break;
-            case 1:
-              Navigator.pushNamed(context, '/product_list');
-              break;
-            case 2:
-              Navigator.pushNamed(context, '/add_product');
-              break;
-            case 3:
-              Navigator.pushNamed(context, '/profile');
-              break;
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+    );
+  }
+
+  Widget _buildNavigationDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: Colors.white,
+                  child: Text(
+                    Provider.of<AuthProvider>(context)
+                        .currentUser!
+                        .name[0]
+                        .toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  Provider.of<AuthProvider>(context).currentUser!.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Seller',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory),
-            label: 'Products',
+          ListTile(
+            leading: const Icon(Icons.dashboard),
+            title: const Text('Dashboard'),
+            selected: _selectedIndex == 0,
+            selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+            onTap: () {
+              setState(() => _selectedIndex = 0);
+              Navigator.pop(context);
+            },
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle),
-            label: 'Add Product',
+          ListTile(
+            leading: const Icon(Icons.inventory_2),
+            title: const Text('My Products'),
+            selected: _selectedIndex == 1,
+            selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+            onTap: () {
+              setState(() => _selectedIndex = 1);
+              Navigator.pop(context);
+            },
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          ListTile(
+            leading: const Icon(Icons.add_circle_outline),
+            title: const Text('Add Product'),
+            selected: _selectedIndex == 2,
+            selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+            onTap: () {
+              setState(() => _selectedIndex = 2);
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: const Text('Profile'),
+            selected: _selectedIndex == 3,
+            selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
+            onTap: () {
+              setState(() => _selectedIndex = 3);
+              Navigator.pop(context);
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () {
+              Navigator.pop(context);
+              _showLogoutDialog(context);
+            },
+          ),
         ],
       ),
     );
@@ -187,6 +259,100 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
                 ),
               ),
             ],
+          ),
+
+          const SizedBox(height: 24),
+
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Notifications',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Use notifications to track product views and stock reminders.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            NotificationService.showLocalNotification(
+                              title: 'Product Updated',
+                              body: 'Your product listing has been updated.',
+                              payload: '1',
+                            );
+                          },
+                          icon: const Icon(Icons.notifications_active),
+                          label: const Text('Show Now'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            NotificationService.scheduleDailyReminder();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Daily restock reminder scheduled for 9 AM',
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.schedule),
+                          label: const Text('Schedule'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: ListTile(
+              leading: Icon(
+                Icons.cloud,
+                color: Theme.of(context).primaryColor,
+              ),
+              title: const Text('Browse API Products'),
+              subtitle: const Text(
+                'View external products from FakeStore in a read-only catalog',
+              ),
+              trailing: Icon(
+                Icons.arrow_forward,
+                color: Theme.of(context).primaryColor,
+              ),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ApiCategoriesScreen(),
+                  ),
+                );
+              },
+            ),
           ),
 
           const SizedBox(height: 24),
@@ -529,6 +695,260 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
               Provider.of<AuthProvider>(context, listen: false).logout();
             },
             child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMyProductsList(User user, ProductProvider productProvider) {
+    return StreamBuilder<List<Product>>(
+      stream: productProvider.getProductsBySeller(user.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error: ${snapshot.error}'),
+          );
+        }
+
+        final products = snapshot.data ?? [];
+
+        if (products.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 64,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No products yet',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Start selling by adding your first product',
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => setState(() => _selectedIndex = 2),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Product'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: products.length,
+          itemBuilder: (context, index) {
+            final product = products[index];
+            return Card(
+              elevation: 2,
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.all(12),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    product.imageUrl,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.image, color: Colors.grey[400]),
+                      );
+                    },
+                  ),
+                ),
+                title: Text(
+                  product.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('â‚¹${product.price.toStringAsFixed(2)}'),
+                    Text('${product.quantity}kg available'),
+                  ],
+                ),
+                trailing: PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      Navigator.pushNamed(
+                        context,
+                        '/edit_product',
+                        arguments: product,
+                      );
+                    } else if (value == 'delete') {
+                      _showDeleteDialog(context, product);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Edit'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Delete', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileScreen(User user) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Profile Header
+          Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Theme.of(context).primaryColor,
+                    child: Text(
+                      user.name[0].toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    user.name,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    user.email,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Profile Info Section
+          Text(
+            'Account Information',
+            style:
+                Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+          ),
+          const SizedBox(height: 12),
+          _buildInfoTile('Name', user.name),
+          _buildInfoTile('Email', user.email),
+          _buildInfoTile('Account Type', 'Seller'),
+          const SizedBox(height: 24),
+
+          // Action Buttons
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Edit profile feature coming soon!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.edit),
+              label: const Text('Edit Profile'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _showLogoutDialog(context),
+              icon: const Icon(Icons.logout),
+              label: const Text('Logout'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoTile(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 1,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),

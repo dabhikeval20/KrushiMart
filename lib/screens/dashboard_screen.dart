@@ -35,7 +35,7 @@ class DashboardScreen extends StatelessWidget {
                     minHeight: 12,
                   ),
                 ),
-              )
+              ),
             ],
           ),
           const SizedBox(width: 8),
@@ -67,6 +67,11 @@ class DashboardScreen extends StatelessWidget {
               leading: const Icon(Icons.person_outline),
               title: const Text('Profile'),
               onTap: () => Navigator.pushNamed(context, '/profile'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.tips_and_updates),
+              title: const Text('Farming Tips'),
+              onTap: () => Navigator.pushNamed(context, '/farming_tips'),
             ),
             const Divider(),
             ListTile(
@@ -184,7 +189,10 @@ class DashboardScreen extends StatelessWidget {
                     children: [
                       const Text(
                         'Farm Statistics',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       TextButton(
                         onPressed: () {},
@@ -282,7 +290,12 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -306,10 +319,7 @@ class DashboardScreen extends StatelessWidget {
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
-          ),
+          Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
         ],
       ),
     );
@@ -340,7 +350,10 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -352,7 +365,11 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   time,
-                  style: const TextStyle(color: Color(0xFF2E7D32), fontSize: 11, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Color(0xFF2E7D32),
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),

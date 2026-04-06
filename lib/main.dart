@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 // Firebase
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'services/notification_service.dart';
 
 // Models
 import 'models/user.dart' as user_model;
@@ -26,18 +28,33 @@ import 'screens/dashboard_screen.dart';
 import 'screens/product_list_screen.dart';
 import 'screens/add_product_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/farming_tips_screen.dart';
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  debugPrint('📩 Background message received: ${message.messageId}');
+  // Let FCM display the notification automatically in the system tray.
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 🔥 Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  await NotificationService.init();
 
   print("🔥 Firebase Connected Successfully");
 
   // Test Firestore connection
   final productProvider = ProductProvider();
   await productProvider.testConnection();
+
+  // 📖 Initialize AuthProvider and restore session if available
+  final authProvider = AuthProvider();
+  final hasSession = await authProvider.hasActiveSession();
+  print('📖 Checking for saved session: ${hasSession ? 'Found' : 'Not found'}');
 
   runApp(const KrushiMartApp());
 }
@@ -53,6 +70,7 @@ class KrushiMartApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductProvider()),
       ],
       child: MaterialApp(
+        navigatorKey: NotificationService.navigatorKey,
         title: 'KrushiMart',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -163,6 +181,7 @@ class KrushiMartApp extends StatelessWidget {
           '/profile': (context) => const ProfileScreen(),
           '/product_list': (context) => const ProductListScreen(),
           '/add_product': (context) => const AddProductScreen(),
+          '/farming_tips': (context) => const FarmingTipsScreen(),
         },
       ),
     );
@@ -194,30 +213,16 @@ class AuthWrapper extends StatelessWidget {
           return const SplashScreen();
         }
 
-        // Get user role and navigate accordingly
+        // Get user role and return the proper home screen directly.
         final role = authProvider.currentUser!.role;
-        print('🎯 Navigating based on role: ${role.name}');
+        print('🎯 Returning screen based on role: ${role.name}');
 
-        // Use addPostFrameCallback to ensure navigation happens after build
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          switch (role) {
-            case user_model.UserRole.seller:
-              print('🏪 Navigating to seller dashboard');
-              Navigator.of(context).pushReplacementNamed('/seller_dashboard');
-              break;
-            case user_model.UserRole.buyer:
-              print('🛒 Navigating to buyer dashboard');
-              Navigator.of(context).pushReplacementNamed('/buyer_dashboard');
-              break;
-            default:
-              print('⚠️ Unknown role - navigating to general dashboard');
-              Navigator.of(context).pushReplacementNamed('/dashboard');
-              break;
-          }
-        });
-
-        // Return splash while navigation is happening
-        return const SplashScreen();
+        switch (role) {
+          case user_model.UserRole.seller:
+            return const SellerDashboardScreen();
+          case user_model.UserRole.buyer:
+            return const BuyerDashboardScreen();
+        }
       },
     );
   }

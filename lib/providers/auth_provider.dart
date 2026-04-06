@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart' as user_model;
 
 class AuthProvider with ChangeNotifier {
@@ -164,6 +165,9 @@ class AuthProvider with ChangeNotifier {
       // Wait for user data to be loaded from Firestore
       await _loadUserData(userCredential.user!.uid);
 
+      // Save session for auto-login on next app launch
+      await saveSessionData();
+
       _isLoading = false;
       notifyListeners();
 
@@ -175,7 +179,7 @@ class AuthProvider with ChangeNotifier {
     } on firebase_auth.FirebaseAuthException catch (e) {
       _isLoading = false;
       _errorMessage = _getAuthErrorMessage(e);
-      print('❌ Auth error: ${e.code} - ${_errorMessage}');
+      print('❌ Auth error: ${e.code} - $_errorMessage');
       notifyListeners();
       return false;
     } catch (e) {
@@ -187,11 +191,127 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// 🔐 Logout user and clear session data
   Future<void> logout() async {
-    await _auth.signOut();
-    _currentUser = null;
-    _errorMessage = null;
-    notifyListeners();
+    try {
+      // Clear Firebase Auth
+      await _auth.signOut();
+
+      // Clear SharedPreferences session
+      await clearSessionData();
+
+      // Reset current user
+      _currentUser = null;
+      _errorMessage = null;
+
+      print('✅ User logged out successfully');
+      notifyListeners();
+    } catch (e) {
+      print('❌ Logout error: $e');
+      _errorMessage = 'Logout failed: $e';
+      notifyListeners();
+    }
+  }
+
+  /// 💾 Save session data to SharedPreferences after successful login
+  Future<void> saveSessionData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      if (_currentUser != null) {
+        // Save user ID and email for reference
+        await prefs.setString('user_id', _currentUser!.id);
+        await prefs.setString('user_email', _currentUser!.email);
+        await prefs.setString('user_name', _currentUser!.name);
+        await prefs.setString('user_role', _currentUser!.role.name);
+
+        // Mark as logged in
+        await prefs.setBool('is_logged_in', true);
+
+        // Save timestamp for analytics
+        await prefs.setInt('last_login', DateTime.now().millisecondsSinceEpoch);
+
+        print(
+          '💾 Session saved: ${_currentUser!.email} (${_currentUser!.role.name})',
+        );
+      }
+    } catch (e) {
+      print('⚠️ Failed to save session: $e');
+    }
+  }
+
+  /// 📖 Restore session from SharedPreferences on app startup
+  Future<bool> restoreSessionData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Check if user was previously logged in
+      final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+
+      if (!isLoggedIn) {
+        print('📖 No previous session found');
+        return false;
+      }
+
+      // Get saved user data
+      final userId = prefs.getString('user_id');
+      final email = prefs.getString('user_email');
+
+      if (userId != null && email != null) {
+        // Try to load user from Firestore
+        await _loadUserData(userId);
+        print('📖 Session restored: $email');
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      print('⚠️ Failed to restore session: $e');
+    }
+
+    return false;
+  }
+
+  /// 🗑️ Clear all session data from SharedPreferences
+  Future<void> clearSessionData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.remove('user_id');
+      await prefs.remove('user_email');
+      await prefs.remove('user_name');
+      await prefs.remove('user_role');
+      await prefs.remove('is_logged_in');
+      await prefs.remove('last_login');
+
+      print('🗑️ Session data cleared');
+    } catch (e) {
+      print('⚠️ Failed to clear session: $e');
+    }
+  }
+
+  /// 🔍 Check if user session exists
+  Future<bool> hasActiveSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('is_logged_in') ?? false;
+    } catch (e) {
+      print('⚠️ Failed to check session: $e');
+      return false;
+    }
+  }
+
+  /// ⏱️ Get last login time
+  Future<DateTime?> getLastLoginTime() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final timestamp = prefs.getInt('last_login');
+      if (timestamp != null) {
+        return DateTime.fromMillisecondsSinceEpoch(timestamp);
+      }
+    } catch (e) {
+      print('⚠️ Failed to get last login time: $e');
+    }
+    return null;
   }
 
   Future<void> updateUserProfile({
@@ -242,6 +362,37 @@ class AuthProvider with ChangeNotifier {
         return 'Email/password authentication is not enabled. Please contact support.';
       default:
         return 'Authentication error: ${e.message}';
+    }
+  }
+
+  /// 🔑 Send password reset email
+  Future<bool> forgotPassword(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      print('📧 Sending password reset email to: $email');
+
+      await _auth.sendPasswordResetEmail(email: email.trim());
+
+      _isLoading = false;
+      notifyListeners();
+
+      print('✅ Password reset email sent successfully');
+      return true;
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      _isLoading = false;
+      _errorMessage = _getAuthErrorMessage(e);
+      print('❌ Password reset error: ${e.code} - $_errorMessage');
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Failed to send reset email: $e';
+      print('❌ Password reset error: $e');
+      notifyListeners();
+      return false;
     }
   }
 

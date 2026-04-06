@@ -1,17 +1,26 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/product.dart';
+import '../models/api_product.dart';
+import '../services/api_service.dart';
 
 class ProductProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final ApiService _apiService = ApiService();
 
   List<Product> products = [];
+  
+  // API Product properties
+  List<ApiProduct> apiProducts = [];
+  List<String> categories = [];
+  bool isLoadingApiProducts = false;
+  String? apiError;
 
   // Test Firestore connection
   Future<bool> testConnection() async {
     try {
       print('🔍 Testing Firestore connection...');
-      final testDoc = await _firestore
+      await _firestore
           .collection('test')
           .doc('connection')
           .get();
@@ -150,5 +159,119 @@ class ProductProvider with ChangeNotifier {
       print('❌ Error in getProductsByCategory: $e');
       return Stream.value([]);
     }
+  }
+
+  // ============================================
+  // API PRODUCT METHODS (FakeStore API Integration)
+  // ============================================
+
+  // Fetch all products from FakeStore API
+  Future<void> fetchApiProducts() async {
+    try {
+      isLoadingApiProducts = true;
+      apiError = null;
+      notifyListeners();
+
+      apiProducts = await _apiService.fetchProducts();
+      print('✅ Fetched ${apiProducts.length} products from API');
+
+      isLoadingApiProducts = false;
+      notifyListeners();
+    } catch (e) {
+      apiError = 'Failed to fetch products: $e';
+      print('❌ Error fetching API products: $apiError');
+      isLoadingApiProducts = false;
+      notifyListeners();
+    }
+  }
+
+  // Fetch products by category from API
+  Future<void> fetchApiProductsByCategory(String category) async {
+    try {
+      isLoadingApiProducts = true;
+      apiError = null;
+      notifyListeners();
+
+      apiProducts = await _apiService.fetchProductsByCategory(category);
+      print('✅ Fetched ${apiProducts.length} products from category: $category');
+
+      isLoadingApiProducts = false;
+      notifyListeners();
+    } catch (e) {
+      apiError = 'Failed to fetch products: $e';
+      print('❌ Error fetching API products by category: $apiError');
+      isLoadingApiProducts = false;
+      notifyListeners();
+    }
+  }
+
+  // Fetch categories from API
+  Future<void> fetchCategories() async {
+    try {
+      categories = await _apiService.fetchCategories();
+      print('✅ Fetched ${categories.length} categories: $categories');
+      notifyListeners();
+    } catch (e) {
+      print('❌ Error fetching categories: $e');
+      apiError = 'Failed to fetch categories: $e';
+      notifyListeners();
+    }
+  }
+
+  // Get single product by ID from API
+  Future<ApiProduct?> fetchApiProductById(int productId) async {
+    try {
+      final product = await _apiService.fetchProductById(productId);
+      return product;
+    } catch (e) {
+      print('❌ Error fetching product $productId: $e');
+      apiError = 'Failed to fetch product details: $e';
+      notifyListeners();
+      return null;
+    }
+  }
+
+  // Search API products by title
+  List<ApiProduct> searchApiProducts(String query) {
+    if (query.isEmpty) {
+      return apiProducts;
+    }
+    return apiProducts
+        .where((product) =>
+            product.title.toLowerCase().contains(query.toLowerCase()))
+        .toList();
+  }
+
+  // Filter API products by price range
+  List<ApiProduct> filterApiProductsByPrice(double minPrice, double maxPrice) {
+    return apiProducts
+        .where((product) =>
+            product.price >= minPrice && product.price <= maxPrice)
+        .toList();
+  }
+
+  // Filter API products by rating
+  List<ApiProduct> filterApiProductsByRating(double minRating) {
+    return apiProducts
+        .where((product) => product.rating >= minRating)
+        .toList();
+  }
+
+  // Get all API products (getter)
+  List<ApiProduct> get allApiProducts => apiProducts;
+
+  // Get API products by category (from cached list)
+  List<ApiProduct> getApiProductsByCategory(String category) {
+    return apiProducts
+        .where((product) =>
+            product.category.toLowerCase() == category.toLowerCase())
+        .toList();
+  }
+
+  // Clear API products cache
+  void clearApiProducts() {
+    apiProducts = [];
+    apiError = null;
+    notifyListeners();
   }
 }

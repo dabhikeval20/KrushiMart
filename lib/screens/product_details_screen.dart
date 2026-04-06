@@ -9,20 +9,25 @@ class ProductDetailsScreen extends StatefulWidget {
 }
 
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
+  late Product product;
   int _quantity = 0;
   bool _isFavorite = false;
+  bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    final product = ModalRoute.of(context)!.settings.arguments as Product;
-    _quantity = product.quantity > 0 ? 1 : 0;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      final routeProduct =
+          ModalRoute.of(context)!.settings.arguments as Product;
+      product = routeProduct;
+      _quantity = product.quantity > 0 ? 1 : 0;
+      _initialized = true;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final product = ModalRoute.of(context)!.settings.arguments as Product;
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
